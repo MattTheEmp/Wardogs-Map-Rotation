@@ -1,0 +1,818 @@
+<title>Wardog Rotation Builder</title>
+<meta name="description" content="Build a Wardog map rotation and export the config lines.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil:wght@700;800&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg: #12140f;
+    --bg-raised: #1a1d15;
+    --panel: #1e2218;
+    --panel-line: #33392a;
+    --ink: #e7e4d6;
+    --ink-dim: #a2a690;
+    --ink-faint: #6d7462;
+    --olive: #8ba05a;
+    --olive-dim: #5f6f3f;
+    --amber: #d0973f;
+    --amber-dim: #6b5228;
+    --red: #b5533e;
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-size: 16px;
+  }
+
+  ::selection{ background: var(--olive-dim); color: var(--ink); }
+
+  .frame{
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+  }
+
+  header.masthead{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 16px;
+    border-bottom: 2px solid var(--panel-line);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .wordmark{
+    font-family: "Big Shoulders Stencil", "Arial Narrow", sans-serif;
+    font-weight: 800;
+    font-size: 44px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .wordmark span{ color: var(--olive); }
+  .subtitle{
+    font-size: 15px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 4px;
+  }
+  .status-chip{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    color: var(--olive);
+    border: 1px solid var(--olive-dim);
+    background: rgba(139,160,90,0.08);
+    padding: 5px 10px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .status-chip b{ color: var(--ink); font-weight: 600; }
+
+  .tabs{
+    display:flex;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .tab-btn{
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-line);
+    color: var(--ink-faint);
+    padding: 9px 18px;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .tab-btn:hover{ color: var(--ink); }
+  .tab-btn.active{
+    background: var(--olive-dim);
+    border-color: var(--olive);
+    color: var(--ink);
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    align-items:start;
+  }
+  @media (max-width: 760px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .options-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    align-items:start;
+  }
+
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 4px;
+  }
+  .card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--panel-line);
+  }
+  .card-head h2{
+    margin:0;
+    font-size: 14px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    font-weight: 600;
+  }
+  .card-body{ padding: 16px; }
+
+  .field{ margin-bottom: 16px; }
+  .field:last-child{ margin-bottom: 0; }
+  .field label{
+    display:block;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+  select{
+    width:100%;
+    background: var(--bg-raised);
+    color: var(--ink);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 9px 10px;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-faint) 50%), linear-gradient(135deg, var(--ink-faint) 50%, transparent 50%);
+    background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  select:focus, .toggle input:focus-visible + .toggle-box, button:focus-visible{
+    outline: 2px solid var(--olive);
+    outline-offset: 1px;
+  }
+
+  .toggles{ display:flex; gap:10px; }
+  .toggle{ position:relative; flex:1; }
+  .toggle input{ position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+  .toggle-box{
+    display:flex; align-items:center; justify-content:center;
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 9px 6px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--bg-raised);
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .toggle input:checked + .toggle-box{
+    background: var(--amber-dim);
+    border-color: var(--amber);
+    color: var(--ink);
+  }
+
+  button{
+    font-family: "Barlow Condensed", sans-serif;
+    cursor: pointer;
+  }
+  .btn-add{
+    width:100%;
+    margin-top: 18px;
+    background: var(--olive);
+    color: #12140f;
+    border: none;
+    border-radius: 3px;
+    padding: 11px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .btn-add:hover{ background: #9db56a; }
+  .btn-add:disabled{ background: var(--panel-line); color: var(--ink-faint); cursor: not-allowed; }
+
+  .zone-hint{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+    word-break: break-all;
+  }
+
+  .manifest-list{
+    list-style: none;
+    margin:0; padding:0;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .manifest-list li{
+    display:grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px;
+    align-items:center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--panel-line);
+  }
+  .manifest-list li:last-child{ border-bottom:none; }
+  .entry-index{
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--ink-faint);
+    font-size: 13px;
+  }
+  .entry-summary .entry-title{
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .entry-summary .entry-title .chip{
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--amber);
+    border: 1px solid var(--amber-dim);
+    padding: 1px 6px;
+    border-radius: 2px;
+    margin-left: 8px;
+    vertical-align: 2px;
+  }
+  .entry-summary .entry-meta{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-top: 3px;
+  }
+  .entry-remove{
+    background: none;
+    border: 1px solid var(--panel-line);
+    color: var(--ink-faint);
+    width: 26px; height: 26px;
+    border-radius: 3px;
+    font-size: 14px;
+    line-height:1;
+  }
+  .entry-remove:hover{ border-color: var(--red); color: var(--red); }
+
+  .empty-state{
+    padding: 40px 16px;
+    text-align:center;
+    color: var(--ink-faint);
+    font-size: 15px;
+  }
+
+  .output-actions{
+    display:flex;
+    gap: 10px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--panel-line);
+  }
+  .btn-secondary{
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-line);
+    color: var(--ink);
+    border-radius: 3px;
+    padding: 8px 14px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .btn-secondary:hover{ border-color: var(--olive); color: var(--olive); }
+  .btn-secondary.copied{ border-color: var(--olive); color: var(--olive); }
+  .btn-secondary.full-width{ width:100%; margin-top: 4px; }
+  .btn-secondary.danger:hover{ border-color: var(--red); color: var(--red); }
+
+  textarea#raw-output{
+    width:100%;
+    box-sizing:border-box;
+    background: var(--bg-raised);
+    color: var(--ink-dim);
+    border: none;
+    border-top: 1px solid var(--panel-line);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    padding: 12px 16px;
+    resize: vertical;
+    min-height: 90px;
+  }
+
+  .option-rows{
+    display:flex;
+    flex-direction:column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .option-row{
+    display:flex;
+    gap: 8px;
+    align-items:center;
+  }
+  .option-row input{
+    flex: 1 1 auto;
+    min-width: 0;
+    background: var(--bg-raised);
+    border: 1px solid var(--panel-line);
+    color: var(--ink);
+    border-radius: 3px;
+    padding: 7px 9px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+  }
+  .option-row input:focus-visible{ outline: 2px solid var(--olive); outline-offset: 1px; }
+  .row-remove{
+    flex: 0 0 auto;
+    background: none;
+    border: 1px solid var(--panel-line);
+    color: var(--ink-faint);
+    width: 26px; height: 26px;
+    border-radius: 3px;
+    font-size: 14px;
+    line-height:1;
+  }
+  .row-remove:hover{ border-color: var(--red); color: var(--red); }
+  .option-note{
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin: -6px 0 12px;
+  }
+  .options-footer{
+    margin-top: 4px;
+    display:flex;
+    justify-content:flex-end;
+  }
+</style>
+
+<div class="frame">
+  <header class="masthead">
+    <div>
+      <div class="wordmark">WAR<span>DOG</span></div>
+      <div class="subtitle">Map Rotation Builder</div>
+    </div>
+    <div class="status-chip">ENTRIES QUEUED: <b id="entry-count">0</b></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" id="tab-btn-builder" type="button">Builder</button>
+    <button class="tab-btn" id="tab-btn-options" type="button">Options</button>
+  </nav>
+
+  <section id="panel-builder">
+    <div class="layout">
+      <section class="card">
+        <div class="card-head"><h2>New Entry</h2></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="map-select">Map</label>
+            <select id="map-select"></select>
+          </div>
+
+          <div class="field">
+            <label>Modifiers</label>
+            <div class="toggles">
+              <label class="toggle">
+                <input type="checkbox" id="infantry-check">
+                <span class="toggle-box">Infantry Only</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="hardcore-check">
+                <span class="toggle-box">Hardcore</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="lighting-select">Time of Day</label>
+            <select id="lighting-select"></select>
+          </div>
+
+          <div class="field">
+            <label for="zone-select">Control Zone</label>
+            <select id="zone-select"></select>
+            <div class="zone-hint" id="zone-hint"></div>
+          </div>
+
+          <button class="btn-add" id="add-btn">Add to Rotation</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Rotation Manifest</h2>
+        </div>
+        <ul class="manifest-list" id="manifest-list"></ul>
+        <div id="empty-state" class="empty-state">No entries yet — configure one on the left and add it.</div>
+        <div class="output-actions">
+          <button class="btn-secondary" id="copy-btn">Copy Config Block</button>
+          <button class="btn-secondary" id="clear-btn">Clear All</button>
+        </div>
+        <textarea id="raw-output" readonly rows="4" placeholder="Config lines will appear here as you add entries..."></textarea>
+      </section>
+    </div>
+  </section>
+
+  <section id="panel-options" hidden>
+    <div class="options-grid">
+      <section class="card">
+        <div class="card-head"><h2>Maps</h2></div>
+        <div class="card-body">
+          <div class="option-note">App name → config value</div>
+          <div class="option-rows" id="maps-editor"></div>
+          <button class="btn-secondary full-width" id="add-map-btn" type="button">+ Add Map</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Time of Day</h2></div>
+        <div class="card-body">
+          <div class="option-rows" id="lighting-editor"></div>
+          <button class="btn-secondary full-width" id="add-lighting-btn" type="button">+ Add Option</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Control Zones</h2></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="zone-map-select">Editing zones for</label>
+            <select id="zone-map-select"></select>
+          </div>
+          <div class="option-rows" id="zones-editor"></div>
+          <button class="btn-secondary full-width" id="add-zone-btn" type="button">+ Add Zone</button>
+        </div>
+      </section>
+    </div>
+    <div class="options-footer">
+      <button class="btn-secondary danger" id="reset-defaults-btn" type="button">Reset All to Defaults</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  const DEFAULTS = {
+    maps: { Bakurani: "Kavkazi", Ozeti: "Europe", Zestafona: "NorthAmerica" },
+    zones: {
+      Bakurani: ["Default", "Farmland", "Lumberyard"],
+      Ozeti: ["Default", "Farmland", "Church", "River"],
+      Zestafona: ["Default", "SmallFactory", "WaterTreatment", "Houses"],
+    },
+    lighting: [
+      "DayStartClear", "DayEarlyClear", "DayEarlyFog", "DayClear",
+      "DayLateClear", "DayLateGray", "DayLateGrayFog", "DayEndClear",
+    ],
+  };
+
+  const STORAGE_KEY = "wardog-rotation-config-v1";
+
+  function loadConfig(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    }catch(e){}
+    return JSON.parse(JSON.stringify(DEFAULTS));
+  }
+
+  function saveConfig(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }catch(e){}
+  }
+
+  let config = loadConfig();
+
+  // ---- element refs ----
+  const tabBtnBuilder = document.getElementById("tab-btn-builder");
+  const tabBtnOptions = document.getElementById("tab-btn-options");
+  const panelBuilder = document.getElementById("panel-builder");
+  const panelOptions = document.getElementById("panel-options");
+
+  const mapSelect = document.getElementById("map-select");
+  const zoneSelect = document.getElementById("zone-select");
+  const zoneHint = document.getElementById("zone-hint");
+  const lightingSelect = document.getElementById("lighting-select");
+  const infantryCheck = document.getElementById("infantry-check");
+  const hardcoreCheck = document.getElementById("hardcore-check");
+  const manifestList = document.getElementById("manifest-list");
+  const emptyState = document.getElementById("empty-state");
+  const entryCount = document.getElementById("entry-count");
+  const rawOutput = document.getElementById("raw-output");
+  const copyBtn = document.getElementById("copy-btn");
+  const addBtn = document.getElementById("add-btn");
+
+  const mapsEditor = document.getElementById("maps-editor");
+  const lightingEditor = document.getElementById("lighting-editor");
+  const zoneMapSelect = document.getElementById("zone-map-select");
+  const zonesEditor = document.getElementById("zones-editor");
+
+  // ---- tabs ----
+  tabBtnBuilder.addEventListener("click", () => {
+    tabBtnBuilder.classList.add("active");
+    tabBtnOptions.classList.remove("active");
+    panelBuilder.hidden = false;
+    panelOptions.hidden = true;
+  });
+  tabBtnOptions.addEventListener("click", () => {
+    tabBtnOptions.classList.add("active");
+    tabBtnBuilder.classList.remove("active");
+    panelOptions.hidden = false;
+    panelBuilder.hidden = true;
+  });
+
+  // ---- builder ----
+  function refreshZones(){
+    const map = mapSelect.value;
+    zoneSelect.innerHTML = "";
+    (config.zones[map] || []).forEach(z => {
+      const opt = document.createElement("option");
+      opt.value = z; opt.textContent = z;
+      zoneSelect.appendChild(opt);
+    });
+    updateZoneHint();
+  }
+
+  function zoneConfigValue(map, zoneName){
+    return `ZoneAlternator.${map}.${zoneName}.Circle`;
+  }
+
+  function updateZoneHint(){
+    if (!mapSelect.value || !zoneSelect.value){ zoneHint.textContent = ""; return; }
+    zoneHint.textContent = zoneConfigValue(mapSelect.value, zoneSelect.value);
+  }
+
+  function buildLine({ map, infantry, hardcore, lighting, zone }){
+    const configMap = config.maps[map];
+    const experiences = [`${map}_KOTH_01`];
+    if (infantry) experiences.push("KOTH_InfantryOnly");
+    if (hardcore) experiences.push("KOTH_Hardcore");
+    const experiencesStr = experiences.map(e => `"${e}"`).join(",");
+    const zoneVal = zoneConfigValue(map, zone);
+    return `(Map="${configMap}", Experiences=${experiencesStr}, Lighting="${lighting}", ZoneAlternator="${zoneVal}")`;
+  }
+
+  function renderBuilderSelects(){
+    const prevMap = mapSelect.value;
+    mapSelect.innerHTML = "";
+    Object.keys(config.maps).forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      mapSelect.appendChild(opt);
+    });
+    if (Object.keys(config.maps).includes(prevMap)) mapSelect.value = prevMap;
+
+    const prevLighting = lightingSelect.value;
+    lightingSelect.innerHTML = "";
+    config.lighting.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      lightingSelect.appendChild(opt);
+    });
+    if (config.lighting.includes(prevLighting)) lightingSelect.value = prevLighting;
+
+    refreshZones();
+    addBtn.disabled = !mapSelect.value || !lightingSelect.value || !zoneSelect.value;
+  }
+
+  let entries = [];
+
+  function render(){
+    manifestList.innerHTML = "";
+    emptyState.style.display = entries.length ? "none" : "block";
+    entries.forEach((e, i) => {
+      const li = document.createElement("li");
+
+      const idx = document.createElement("div");
+      idx.className = "entry-index";
+      idx.textContent = String(i + 1).padStart(2, "0");
+
+      const summary = document.createElement("div");
+      summary.className = "entry-summary";
+      const chips = [e.infantry ? "INF" : null, e.hardcore ? "HC" : null].filter(Boolean);
+      summary.innerHTML = `
+        <div class="entry-title">${e.map}${chips.map(c => `<span class="chip">${c}</span>`).join("")}</div>
+        <div class="entry-meta">${e.lighting} · ${e.zone}</div>
+      `;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "entry-remove";
+      removeBtn.textContent = "×";
+      removeBtn.setAttribute("aria-label", "Remove entry");
+      removeBtn.addEventListener("click", () => {
+        entries.splice(i, 1);
+        render();
+      });
+
+      li.appendChild(idx);
+      li.appendChild(summary);
+      li.appendChild(removeBtn);
+      manifestList.appendChild(li);
+    });
+
+    entryCount.textContent = entries.length;
+    rawOutput.value = entries.map(buildLine).join(",");
+  }
+
+  mapSelect.addEventListener("change", () => { refreshZones(); addBtn.disabled = !mapSelect.value || !lightingSelect.value || !zoneSelect.value; });
+  zoneSelect.addEventListener("change", updateZoneHint);
+
+  addBtn.addEventListener("click", () => {
+    if (!mapSelect.value || !lightingSelect.value || !zoneSelect.value) return;
+    entries.push({
+      map: mapSelect.value,
+      infantry: infantryCheck.checked,
+      hardcore: hardcoreCheck.checked,
+      lighting: lightingSelect.value,
+      zone: zoneSelect.value,
+    });
+    render();
+  });
+
+  document.getElementById("clear-btn").addEventListener("click", () => {
+    entries = [];
+    render();
+  });
+
+  copyBtn.addEventListener("click", async () => {
+    rawOutput.select();
+    try{
+      await navigator.clipboard.writeText(rawOutput.value);
+    }catch(e){
+      document.execCommand("copy");
+    }
+    copyBtn.textContent = "Copied";
+    copyBtn.classList.add("copied");
+    setTimeout(() => { copyBtn.textContent = "Copy Config Block"; copyBtn.classList.remove("copied"); }, 1400);
+  });
+
+  // ---- options: maps ----
+  function renderMapsEditor(){
+    mapsEditor.innerHTML = "";
+    Object.entries(config.maps).forEach(([name, value]) => {
+      const row = document.createElement("div");
+      row.className = "option-row";
+
+      const nameInput = document.createElement("input");
+      nameInput.value = name;
+      nameInput.placeholder = "App name";
+      nameInput.addEventListener("change", () => {
+        const newName = nameInput.value.trim();
+        if (!newName || newName === name || config.maps[newName] !== undefined){
+          nameInput.value = name;
+          return;
+        }
+        const newMaps = {};
+        Object.entries(config.maps).forEach(([k, v]) => { newMaps[k === name ? newName : k] = v; });
+        config.maps = newMaps;
+        if (config.zones[name]){ config.zones[newName] = config.zones[name]; delete config.zones[name]; }
+        commitOptions();
+      });
+
+      const valueInput = document.createElement("input");
+      valueInput.value = value;
+      valueInput.placeholder = "Config value";
+      valueInput.addEventListener("change", () => {
+        config.maps[name] = valueInput.value.trim();
+        commitOptions();
+      });
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "row-remove";
+      removeBtn.textContent = "×";
+      removeBtn.setAttribute("aria-label", "Remove map");
+      removeBtn.addEventListener("click", () => {
+        delete config.maps[name];
+        delete config.zones[name];
+        commitOptions();
+      });
+
+      row.append(nameInput, valueInput, removeBtn);
+      mapsEditor.appendChild(row);
+    });
+  }
+
+  document.getElementById("add-map-btn").addEventListener("click", () => {
+    let n = 1;
+    while (config.maps[`NewMap${n}`] !== undefined) n++;
+    const key = `NewMap${n}`;
+    config.maps[key] = "ConfigValue";
+    config.zones[key] = ["Default"];
+    commitOptions();
+  });
+
+  // ---- options: lighting ----
+  function renderLightingEditor(){
+    lightingEditor.innerHTML = "";
+    config.lighting.forEach((value, i) => {
+      const row = document.createElement("div");
+      row.className = "option-row";
+
+      const input = document.createElement("input");
+      input.value = value;
+      input.addEventListener("change", () => {
+        config.lighting[i] = input.value.trim();
+        commitOptions();
+      });
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "row-remove";
+      removeBtn.textContent = "×";
+      removeBtn.setAttribute("aria-label", "Remove option");
+      removeBtn.addEventListener("click", () => {
+        config.lighting.splice(i, 1);
+        commitOptions();
+      });
+
+      row.append(input, removeBtn);
+      lightingEditor.appendChild(row);
+    });
+  }
+
+  document.getElementById("add-lighting-btn").addEventListener("click", () => {
+    config.lighting.push("NewOption");
+    commitOptions();
+  });
+
+  // ---- options: zones ----
+  function renderZoneMapSelect(){
+    const prev = zoneMapSelect.value;
+    zoneMapSelect.innerHTML = "";
+    Object.keys(config.maps).forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      zoneMapSelect.appendChild(opt);
+    });
+    if (Object.keys(config.maps).includes(prev)) zoneMapSelect.value = prev;
+  }
+
+  function renderZonesEditor(){
+    const map = zoneMapSelect.value;
+    zonesEditor.innerHTML = "";
+    (config.zones[map] || []).forEach((value, i) => {
+      const row = document.createElement("div");
+      row.className = "option-row";
+
+      const input = document.createElement("input");
+      input.value = value;
+      input.addEventListener("change", () => {
+        config.zones[map][i] = input.value.trim();
+        commitOptions();
+      });
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "row-remove";
+      removeBtn.textContent = "×";
+      removeBtn.setAttribute("aria-label", "Remove zone");
+      removeBtn.addEventListener("click", () => {
+        config.zones[map].splice(i, 1);
+        commitOptions();
+      });
+
+      row.append(input, removeBtn);
+      zonesEditor.appendChild(row);
+    });
+  }
+
+  zoneMapSelect.addEventListener("change", renderZonesEditor);
+
+  document.getElementById("add-zone-btn").addEventListener("click", () => {
+    const map = zoneMapSelect.value;
+    if (!map) return;
+    config.zones[map] = config.zones[map] || [];
+    config.zones[map].push("NewZone");
+    commitOptions();
+  });
+
+  document.getElementById("reset-defaults-btn").addEventListener("click", () => {
+    if (!confirm("Reset maps, time-of-day, and zone options to defaults?")) return;
+    config = JSON.parse(JSON.stringify(DEFAULTS));
+    commitOptions();
+  });
+
+  function commitOptions(){
+    saveConfig();
+    renderMapsEditor();
+    renderLightingEditor();
+    renderZoneMapSelect();
+    renderZonesEditor();
+    renderBuilderSelects();
+  }
+
+  renderMapsEditor();
+  renderLightingEditor();
+  renderZoneMapSelect();
+  renderZonesEditor();
+  renderBuilderSelects();
+  render();
+</script>
