@@ -356,6 +356,42 @@
     display:flex;
     justify-content:flex-end;
   }
+
+  .check-list{
+    display:flex;
+    flex-direction:column;
+    gap: 2px;
+  }
+  .check-item{
+    display:flex;
+    align-items:center;
+    gap: 9px;
+    padding: 5px 2px;
+  }
+  .check-item input[type="checkbox"]{
+    width: 16px; height: 16px;
+    accent-color: var(--olive);
+    flex: 0 0 auto;
+  }
+  .check-item label{
+    font-size: 15px;
+    cursor:pointer;
+  }
+  .zone-group{ margin-bottom: 16px; }
+  .zone-group:last-child{ margin-bottom: 0; }
+  .zone-group-title{
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 4px;
+  }
+  .bulk-footer{
+    align-items:center;
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .bulk-generate{ width:auto; margin-top:0; padding: 11px 22px; }
 </style>
 
 <div class="frame">
@@ -369,6 +405,7 @@
 
   <nav class="tabs">
     <button class="tab-btn active" id="tab-btn-builder" type="button">Builder</button>
+    <button class="tab-btn" id="tab-btn-bulk" type="button">Bulk Generate</button>
     <button class="tab-btn" id="tab-btn-options" type="button">Options</button>
   </nav>
 
@@ -423,6 +460,41 @@
         </div>
         <textarea id="raw-output" readonly rows="4" placeholder="Config lines will appear here as you add entries..."></textarea>
       </section>
+    </div>
+  </section>
+
+  <section id="panel-bulk" hidden>
+    <div class="options-grid">
+      <section class="card">
+        <div class="card-head"><h2>Maps</h2></div>
+        <div class="card-body">
+          <div class="check-list" id="bulk-maps"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Time of Day</h2></div>
+        <div class="card-body">
+          <div class="check-list" id="bulk-lighting"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Modifiers</h2></div>
+        <div class="card-body">
+          <div class="check-list" id="bulk-modifiers"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:20px;">
+      <div class="card-head"><h2>Control Zones by Map</h2></div>
+      <div class="card-body" id="bulk-zones"></div>
+    </section>
+
+    <div class="options-footer bulk-footer">
+      <span class="status-chip" id="bulk-count">0 combinations</span>
+      <button class="btn-add bulk-generate" id="bulk-generate-btn" type="button">Generate All Combinations</button>
     </div>
   </section>
 
@@ -495,8 +567,10 @@
 
   // ---- element refs ----
   const tabBtnBuilder = document.getElementById("tab-btn-builder");
+  const tabBtnBulk = document.getElementById("tab-btn-bulk");
   const tabBtnOptions = document.getElementById("tab-btn-options");
   const panelBuilder = document.getElementById("panel-builder");
+  const panelBulk = document.getElementById("panel-bulk");
   const panelOptions = document.getElementById("panel-options");
 
   const mapSelect = document.getElementById("map-select");
@@ -518,18 +592,21 @@
   const zonesEditor = document.getElementById("zones-editor");
 
   // ---- tabs ----
-  tabBtnBuilder.addEventListener("click", () => {
-    tabBtnBuilder.classList.add("active");
-    tabBtnOptions.classList.remove("active");
-    panelBuilder.hidden = false;
-    panelOptions.hidden = true;
-  });
-  tabBtnOptions.addEventListener("click", () => {
-    tabBtnOptions.classList.add("active");
-    tabBtnBuilder.classList.remove("active");
-    panelOptions.hidden = false;
-    panelBuilder.hidden = true;
-  });
+  const tabs = [
+    { btn: tabBtnBuilder, panel: panelBuilder },
+    { btn: tabBtnBulk, panel: panelBulk },
+    { btn: tabBtnOptions, panel: panelOptions },
+  ];
+  function activateTab(active){
+    tabs.forEach(({ btn, panel }) => {
+      const isActive = panel === active;
+      btn.classList.toggle("active", isActive);
+      panel.hidden = !isActive;
+    });
+  }
+  tabBtnBuilder.addEventListener("click", () => activateTab(panelBuilder));
+  tabBtnBulk.addEventListener("click", () => activateTab(panelBulk));
+  tabBtnOptions.addEventListener("click", () => activateTab(panelOptions));
 
   // ---- builder ----
   function refreshZones(){
@@ -557,9 +634,54 @@
     const experiences = [`${map}_KOTH_01`];
     if (infantry) experiences.push("KOTH_InfantryOnly");
     if (hardcore) experiences.push("KOTH_Hardcore");
-    const experiencesStr = experiences.map(e => `"${e}"`).join(",");
+    const experienceField = experiences.length > 1 ? "Experiences" : "Experience";
+    const experienceValue = experiences.join("+");
     const zoneVal = zoneConfigValue(map, zone);
-    return `(Map="${configMap}", Experiences=${experiencesStr}, Lighting="${lighting}", ZoneAlternator="${zoneVal}")`;
+    return `.RotationEntries=(Map="${configMap}",${experienceField}="${experienceValue}",Lighting="${lighting}",ZoneAlternator="${zoneVal}")`;
+  }
+
+  const GAME_MODE_LABELS = {
+    none: "KOTH",
+    infantry: "KOTH Infantry Only",
+    hardcore: "KOTH Hardcore",
+    both: "KOTH Infantry Only + Hardcore",
+  };
+
+  function gameModeKey(infantry, hardcore){
+    if (infantry && hardcore) return "both";
+    if (infantry) return "infantry";
+    if (hardcore) return "hardcore";
+    return "none";
+  }
+
+  function buildOutput(list){
+    if (!list.length) return "";
+
+    const mapOrder = [];
+    const byMap = {};
+    list.forEach(e => {
+      if (!byMap[e.map]){ byMap[e.map] = []; mapOrder.push(e.map); }
+      byMap[e.map].push(e);
+    });
+
+    const blocks = mapOrder.map(map => {
+      const mapEntries = byMap[map];
+      const modeOrder = [];
+      const byMode = {};
+      mapEntries.forEach(e => {
+        const key = gameModeKey(e.infantry, e.hardcore);
+        if (!byMode[key]){ byMode[key] = []; modeOrder.push(key); }
+        byMode[key].push(e);
+      });
+
+      const modeSections = modeOrder.map(key =>
+        `// ${GAME_MODE_LABELS[key]}\n${byMode[key].map(buildLine).join("\n")}`
+      );
+
+      return `// ${map}\n${modeSections.join("\n")}`;
+    });
+
+    return blocks.join("\n\n");
   }
 
   function renderBuilderSelects(){
@@ -621,7 +743,7 @@
     });
 
     entryCount.textContent = entries.length;
-    rawOutput.value = entries.map(buildLine).join(",");
+    rawOutput.value = buildOutput(entries);
   }
 
   mapSelect.addEventListener("change", () => { refreshZones(); addBtn.disabled = !mapSelect.value || !lightingSelect.value || !zoneSelect.value; });
@@ -807,12 +929,152 @@
     renderZoneMapSelect();
     renderZonesEditor();
     renderBuilderSelects();
+    renderBulkTab();
   }
+
+  // ---- bulk generate ----
+  const MODIFIER_VARIANTS = [
+    { key: "none", label: "No Modifier", infantry: false, hardcore: false },
+    { key: "infantry", label: "Infantry Only", infantry: true, hardcore: false },
+    { key: "hardcore", label: "Hardcore", infantry: false, hardcore: true },
+    { key: "both", label: "Infantry + Hardcore", infantry: true, hardcore: true },
+  ];
+
+  const bulkState = {
+    maps: {},
+    lighting: {},
+    modifiers: { none: true, infantry: true, hardcore: true, both: true },
+    zones: {},
+  };
+
+  const bulkMapsEl = document.getElementById("bulk-maps");
+  const bulkLightingEl = document.getElementById("bulk-lighting");
+  const bulkModifiersEl = document.getElementById("bulk-modifiers");
+  const bulkZonesEl = document.getElementById("bulk-zones");
+  const bulkCountEl = document.getElementById("bulk-count");
+
+  function checkItem(id, label, checked, onChange){
+    const wrap = document.createElement("div");
+    wrap.className = "check-item";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = id;
+    input.checked = checked;
+    input.addEventListener("change", () => onChange(input.checked));
+    const lbl = document.createElement("label");
+    lbl.setAttribute("for", id);
+    lbl.textContent = label;
+    wrap.append(input, lbl);
+    return wrap;
+  }
+
+  function renderBulkMaps(){
+    bulkMapsEl.innerHTML = "";
+    Object.keys(config.maps).forEach(name => {
+      if (bulkState.maps[name] === undefined) bulkState.maps[name] = true;
+      bulkMapsEl.appendChild(checkItem(`bulk-map-${name}`, name, bulkState.maps[name], checked => {
+        bulkState.maps[name] = checked;
+        renderBulkZones();
+        updateBulkCount();
+      }));
+    });
+  }
+
+  function renderBulkLighting(){
+    bulkLightingEl.innerHTML = "";
+    config.lighting.forEach(name => {
+      if (bulkState.lighting[name] === undefined) bulkState.lighting[name] = true;
+      bulkLightingEl.appendChild(checkItem(`bulk-lighting-${name}`, name, bulkState.lighting[name], checked => {
+        bulkState.lighting[name] = checked;
+        updateBulkCount();
+      }));
+    });
+  }
+
+  function renderBulkModifiers(){
+    bulkModifiersEl.innerHTML = "";
+    MODIFIER_VARIANTS.forEach(variant => {
+      bulkModifiersEl.appendChild(checkItem(`bulk-mod-${variant.key}`, variant.label, bulkState.modifiers[variant.key], checked => {
+        bulkState.modifiers[variant.key] = checked;
+        updateBulkCount();
+      }));
+    });
+  }
+
+  function renderBulkZones(){
+    bulkZonesEl.innerHTML = "";
+    const selectedMaps = Object.keys(config.maps).filter(m => bulkState.maps[m]);
+    if (!selectedMaps.length){
+      bulkZonesEl.innerHTML = '<div class="option-note" style="margin:0;">Select at least one map above.</div>';
+      updateBulkCount();
+      return;
+    }
+    selectedMaps.forEach(map => {
+      if (!bulkState.zones[map]) bulkState.zones[map] = {};
+      const zones = config.zones[map] || [];
+      const group = document.createElement("div");
+      group.className = "zone-group";
+      const title = document.createElement("div");
+      title.className = "zone-group-title";
+      title.textContent = map;
+      const list = document.createElement("div");
+      list.className = "check-list";
+      zones.forEach(zone => {
+        if (bulkState.zones[map][zone] === undefined) bulkState.zones[map][zone] = true;
+        list.appendChild(checkItem(`bulk-zone-${map}-${zone}`, zone, bulkState.zones[map][zone], checked => {
+          bulkState.zones[map][zone] = checked;
+          updateBulkCount();
+        }));
+      });
+      group.append(title, list);
+      bulkZonesEl.appendChild(group);
+    });
+    updateBulkCount();
+  }
+
+  function computeBulkCombinations(){
+    const selectedMaps = Object.keys(config.maps).filter(m => bulkState.maps[m]);
+    const selectedLighting = config.lighting.filter(l => bulkState.lighting[l]);
+    const selectedModifiers = MODIFIER_VARIANTS.filter(v => bulkState.modifiers[v.key]);
+    const combos = [];
+    selectedMaps.forEach(map => {
+      const selectedZones = (config.zones[map] || []).filter(z => bulkState.zones[map] && bulkState.zones[map][z]);
+      selectedZones.forEach(zone => {
+        selectedLighting.forEach(lighting => {
+          selectedModifiers.forEach(variant => {
+            combos.push({ map, zone, lighting, infantry: variant.infantry, hardcore: variant.hardcore });
+          });
+        });
+      });
+    });
+    return combos;
+  }
+
+  function updateBulkCount(){
+    const count = computeBulkCombinations().length;
+    bulkCountEl.innerHTML = `<b>${count}</b> combination${count === 1 ? "" : "s"}`;
+  }
+
+  function renderBulkTab(){
+    renderBulkMaps();
+    renderBulkLighting();
+    renderBulkModifiers();
+    renderBulkZones();
+  }
+
+  document.getElementById("bulk-generate-btn").addEventListener("click", () => {
+    const combos = computeBulkCombinations();
+    if (!combos.length) return;
+    entries.push(...combos);
+    render();
+    activateTab(panelBuilder);
+  });
 
   renderMapsEditor();
   renderLightingEditor();
   renderZoneMapSelect();
   renderZonesEditor();
   renderBuilderSelects();
+  renderBulkTab();
   render();
 </script>
