@@ -503,7 +503,7 @@
       <section class="card">
         <div class="card-head"><h2>Maps</h2></div>
         <div class="card-body">
-          <div class="option-note">App name → config value</div>
+          <div class="option-note">App name → config value → experience prefix</div>
           <div class="option-rows" id="maps-editor"></div>
           <button class="btn-secondary full-width" id="add-map-btn" type="button">+ Add Map</button>
         </div>
@@ -537,7 +537,11 @@
 
 <script>
   const DEFAULTS = {
-    maps: { Bakurani: "Kavkazi", Ozeti: "Europe", Zestafona: "NorthAmerica" },
+    maps: {
+      Bakurani: { value: "Kavkazi", prefix: "Bakurani" },
+      Ozeti: { value: "Europe", prefix: "Madrid" },
+      Zestafona: { value: "NorthAmerica", prefix: "Detroit" },
+    },
     zones: {
       Bakurani: ["Default", "Farmland", "Lumberyard"],
       Ozeti: ["Default", "Farmland", "Church", "River"],
@@ -551,10 +555,19 @@
 
   const STORAGE_KEY = "wardog-rotation-config-v1";
 
+  function migrateConfig(cfg){
+    Object.entries(cfg.maps).forEach(([name, entry]) => {
+      if (typeof entry === "string"){
+        cfg.maps[name] = { value: entry, prefix: name };
+      }
+    });
+    return cfg;
+  }
+
   function loadConfig(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) return migrateConfig(JSON.parse(raw));
     }catch(e){}
     return JSON.parse(JSON.stringify(DEFAULTS));
   }
@@ -630,8 +643,8 @@
   }
 
   function buildLine({ map, infantry, hardcore, lighting, zone }){
-    const configMap = config.maps[map];
-    const experiences = [`${map}_KOTH_01`];
+    const configMap = config.maps[map].value;
+    const experiences = [`${config.maps[map].prefix}_KOTH_01`];
     if (infantry) experiences.push("KOTH_InfantryOnly");
     if (hardcore) experiences.push("KOTH_Hardcore");
     const experienceField = experiences.length > 1 ? "Experiences" : "Experience";
@@ -781,7 +794,7 @@
   // ---- options: maps ----
   function renderMapsEditor(){
     mapsEditor.innerHTML = "";
-    Object.entries(config.maps).forEach(([name, value]) => {
+    Object.entries(config.maps).forEach(([name, entry]) => {
       const row = document.createElement("div");
       row.className = "option-row";
 
@@ -802,10 +815,18 @@
       });
 
       const valueInput = document.createElement("input");
-      valueInput.value = value;
+      valueInput.value = entry.value;
       valueInput.placeholder = "Config value";
       valueInput.addEventListener("change", () => {
-        config.maps[name] = valueInput.value.trim();
+        config.maps[name].value = valueInput.value.trim();
+        commitOptions();
+      });
+
+      const prefixInput = document.createElement("input");
+      prefixInput.value = entry.prefix;
+      prefixInput.placeholder = "Experience prefix";
+      prefixInput.addEventListener("change", () => {
+        config.maps[name].prefix = prefixInput.value.trim();
         commitOptions();
       });
 
@@ -819,7 +840,7 @@
         commitOptions();
       });
 
-      row.append(nameInput, valueInput, removeBtn);
+      row.append(nameInput, valueInput, prefixInput, removeBtn);
       mapsEditor.appendChild(row);
     });
   }
@@ -828,7 +849,7 @@
     let n = 1;
     while (config.maps[`NewMap${n}`] !== undefined) n++;
     const key = `NewMap${n}`;
-    config.maps[key] = "ConfigValue";
+    config.maps[key] = { value: "ConfigValue", prefix: "ExperiencePrefix" };
     config.zones[key] = ["Default"];
     commitOptions();
   });
