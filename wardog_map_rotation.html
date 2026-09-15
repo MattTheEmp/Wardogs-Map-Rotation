@@ -458,7 +458,7 @@
           <button class="btn-secondary" id="copy-btn">Copy Config Block</button>
           <button class="btn-secondary" id="clear-btn">Clear All</button>
         </div>
-        <textarea id="raw-output" readonly rows="4" placeholder="Config lines will appear here as you add entries..."></textarea>
+        <textarea id="raw-output" readonly rows="8" placeholder="Config lines will appear here as you add entries..."></textarea>
       </section>
     </div>
   </section>
@@ -688,13 +688,13 @@
       });
 
       const modeSections = modeOrder.map(key =>
-        `// ${GAME_MODE_LABELS[key]}\n${byMode[key].map(buildLine).join("\n")}`
+        `!! ${GAME_MODE_LABELS[key]}\n\n${byMode[key].map(buildLine).join("\n")}`
       );
 
-      return `// ${map}\n${modeSections.join("\n")}`;
+      return `!! ${map}\n\n${modeSections.join("\n\n")}`;
     });
 
-    return blocks.join("\n\n");
+    return blocks.join("\n\n\n");
   }
 
   function renderBuilderSelects(){

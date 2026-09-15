@@ -2,6 +2,11 @@
 
 All notable changes to the Wardog Rotation Builder.
 
+## 2026-09-15 (2)
+
+- Comment markers changed from `//` to `!!` for map and game-mode section headers.
+- Added extra blank lines around sections in the config output (after each header, between game modes, and two blank lines between map groups) so blocks are easier to select and paste.
+
 ## 2026-09-15
 
 - Fixed map/experience-prefix mismatch: the `Experience`/`Experiences` value now uses each map's own game-mode prefix (e.g. Europe's is `Madrid`, NorthAmerica's is `Detroit`) instead of assuming it always matches the app-side map name. Each map now has three editable fields in the Options tab: app name, config value, and experience prefix.
