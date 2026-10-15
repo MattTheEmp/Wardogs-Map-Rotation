@@ -2,6 +2,10 @@
 
 All notable changes to the Wardog Rotation Builder.
 
+## 2026-10-15
+
+- Added `DayLateRain` to the Time of Day options (available for all maps). Browsers with a previously saved option list get it added automatically, once, in its place after `DayLateGrayFog`.
+
 ## 2026-09-15 (2)
 
 - Comment markers changed from `//` to `!!` for map and game-mode section headers.
