@@ -549,7 +549,7 @@
     },
     lighting: [
       "DayStartClear", "DayEarlyClear", "DayEarlyFog", "DayClear",
-      "DayLateClear", "DayLateGray", "DayLateGrayFog", "DayEndClear",
+      "DayLateClear", "DayLateGray", "DayLateGrayFog", "DayLateRain", "DayEndClear",
     ],
   };
 
@@ -561,6 +561,19 @@
         cfg.maps[name] = { value: entry, prefix: name };
       }
     });
+    // One-time additions of new time-of-day options to configs saved before they existed.
+    // Tracked in seenLighting so an option the user deliberately removes isn't re-added.
+    const NEW_LIGHTING = [{ name: "DayLateRain", after: "DayLateGrayFog" }];
+    cfg.seenLighting = cfg.seenLighting || [];
+    NEW_LIGHTING.forEach(({ name, after }) => {
+      if (cfg.seenLighting.includes(name)) return;
+      if (!cfg.lighting.includes(name)){
+        const idx = cfg.lighting.indexOf(after);
+        if (idx >= 0) cfg.lighting.splice(idx + 1, 0, name);
+        else cfg.lighting.push(name);
+      }
+      cfg.seenLighting.push(name);
+    });
     return cfg;
   }
 
@@ -569,7 +582,7 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return migrateConfig(JSON.parse(raw));
     }catch(e){}
-    return JSON.parse(JSON.stringify(DEFAULTS));
+    return migrateConfig(JSON.parse(JSON.stringify(DEFAULTS)));
   }
 
   function saveConfig(){
@@ -939,7 +952,7 @@
 
   document.getElementById("reset-defaults-btn").addEventListener("click", () => {
     if (!confirm("Reset maps, time-of-day, and zone options to defaults?")) return;
-    config = JSON.parse(JSON.stringify(DEFAULTS));
+    config = migrateConfig(JSON.parse(JSON.stringify(DEFAULTS)));
     commitOptions();
   });
 
