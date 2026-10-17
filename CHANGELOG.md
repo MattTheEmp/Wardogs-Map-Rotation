@@ -2,6 +2,11 @@
 
 All notable changes to the Wardog Rotation Builder.
 
+## 2026-10-16
+
+- Bakurani now uses `Bakurani_KOTH_02` (was `Bakurani_KOTH_01`).
+- The per-map "experience prefix" field is now the full base experience (e.g. `Madrid_KOTH_01`), so the KOTH number can be set per map in the Options tab instead of always being `_KOTH_01`. Saved browser configs are converted automatically, and a saved `Bakurani_KOTH_01` is corrected to `_02` once.
+
 ## 2026-10-15
 
 - Added `DayLateRain` to the Time of Day options (available for all maps). Browsers with a previously saved option list get it added automatically, once, in its place after `DayLateGrayFog`.

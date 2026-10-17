@@ -503,7 +503,7 @@
       <section class="card">
         <div class="card-head"><h2>Maps</h2></div>
         <div class="card-body">
-          <div class="option-note">App name → config value → experience prefix</div>
+          <div class="option-note">App name → config value → base experience</div>
           <div class="option-rows" id="maps-editor"></div>
           <button class="btn-secondary full-width" id="add-map-btn" type="button">+ Add Map</button>
         </div>
@@ -538,9 +538,9 @@
 <script>
   const DEFAULTS = {
     maps: {
-      Bakurani: { value: "Kavkazi", prefix: "Bakurani" },
-      Ozeti: { value: "Europe", prefix: "Madrid" },
-      Zestafona: { value: "NorthAmerica", prefix: "Detroit" },
+      Bakurani: { value: "Kavkazi", experience: "Bakurani_KOTH_02" },
+      Ozeti: { value: "Europe", experience: "Madrid_KOTH_01" },
+      Zestafona: { value: "NorthAmerica", experience: "Detroit_KOTH_01" },
     },
     zones: {
       Bakurani: ["Default", "Farmland", "Lumberyard"],
@@ -560,7 +560,21 @@
       if (typeof entry === "string"){
         cfg.maps[name] = { value: entry, prefix: name };
       }
+      // Older configs stored only a prefix and always appended _KOTH_01.
+      const m = cfg.maps[name];
+      if (m.experience === undefined){
+        m.experience = `${m.prefix || name}_KOTH_01`;
+      }
+      delete m.prefix;
     });
+    // One-time correction: Bakurani uses KOTH_02, not KOTH_01.
+    cfg.appliedFixes = cfg.appliedFixes || [];
+    if (!cfg.appliedFixes.includes("bakurani-koth-02")){
+      Object.values(cfg.maps).forEach(m => {
+        if (m.experience === "Bakurani_KOTH_01") m.experience = "Bakurani_KOTH_02";
+      });
+      cfg.appliedFixes.push("bakurani-koth-02");
+    }
     // One-time additions of new time-of-day options to configs saved before they existed.
     // Tracked in seenLighting so an option the user deliberately removes isn't re-added.
     const NEW_LIGHTING = [{ name: "DayLateRain", after: "DayLateGrayFog" }];
@@ -657,7 +671,7 @@
 
   function buildLine({ map, infantry, hardcore, lighting, zone }){
     const configMap = config.maps[map].value;
-    const experiences = [`${config.maps[map].prefix}_KOTH_01`];
+    const experiences = [config.maps[map].experience];
     if (infantry) experiences.push("KOTH_InfantryOnly");
     if (hardcore) experiences.push("KOTH_Hardcore");
     const experienceField = experiences.length > 1 ? "Experiences" : "Experience";
@@ -836,10 +850,10 @@
       });
 
       const prefixInput = document.createElement("input");
-      prefixInput.value = entry.prefix;
-      prefixInput.placeholder = "Experience prefix";
+      prefixInput.value = entry.experience;
+      prefixInput.placeholder = "Base experience";
       prefixInput.addEventListener("change", () => {
-        config.maps[name].prefix = prefixInput.value.trim();
+        config.maps[name].experience = prefixInput.value.trim();
         commitOptions();
       });
 
@@ -862,7 +876,7 @@
     let n = 1;
     while (config.maps[`NewMap${n}`] !== undefined) n++;
     const key = `NewMap${n}`;
-    config.maps[key] = { value: "ConfigValue", prefix: "ExperiencePrefix" };
+    config.maps[key] = { value: "ConfigValue", experience: "Experience_KOTH_01" };
     config.zones[key] = ["Default"];
     commitOptions();
   });
