@@ -18,7 +18,7 @@ Check off multiple maps, times of day, zones (per map), and modifier combination
 
 ### Options tab
 
-Edit the Map / Time of Day / Control Zone lists directly — add, rename, or remove entries. Each map has three fields: app name, config value, and experience prefix (the name used in `Experience`/`Experiences`, which isn't always the same as the map name — e.g. `Europe`'s prefix is `Madrid`). Changes are saved to that browser's local storage.
+Edit the Map / Time of Day / Control Zone lists directly — add, rename, or remove entries. Each map has three fields: app name, config value, and base experience (the value used in `Experience`/`Experiences`, which isn't always based on the map name — e.g. `Europe` uses `Madrid_KOTH_01` and `Kavkazi` uses `Bakurani_KOTH_02`). Changes are saved to that browser's local storage.
 
 ## Output format
 
@@ -29,11 +29,11 @@ Entries are grouped by map, then by game mode, with a blank line between map gro
 
 !! KOTH
 
-.RotationEntries=(Map="Kavkazi",Experience="Bakurani_KOTH_01",Lighting="DayClear",ZoneAlternator="ZoneAlternator.Bakurani.Default.Circle")
+.RotationEntries=(Map="Kavkazi",Experience="Bakurani_KOTH_02",Lighting="DayClear",ZoneAlternator="ZoneAlternator.Bakurani.Default.Circle")
 
 !! KOTH Infantry Only
 
-.RotationEntries=(Map="Kavkazi",Experiences="Bakurani_KOTH_01+KOTH_InfantryOnly",Lighting="DayClear",ZoneAlternator="ZoneAlternator.Bakurani.Farmland.Circle")
+.RotationEntries=(Map="Kavkazi",Experiences="Bakurani_KOTH_02+KOTH_InfantryOnly",Lighting="DayClear",ZoneAlternator="ZoneAlternator.Bakurani.Farmland.Circle")
 
 
 !! Ozeti
