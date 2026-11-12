@@ -2,6 +2,14 @@
 
 All notable changes to the Wardog Rotation Builder.
 
+## 2026-11-12 (Season 03)
+
+- Added map **Sabatulo** (config `Russia`, experience `Moscow_KOTH_01`). It has no control zones yet, so its entries are written without `ZoneAlternator`; zones can be added in Options when known.
+- Added the **Limited Gear** modifier (`KOTH_LimitedGear`). It stacks after Infantry Only and Hardcore, e.g. `Madrid_KOTH_01+KOTH_InfantryOnly+KOTH_LimitedGear`. Available in Builder and as Bulk Generate combos (Limited Gear combos start unchecked).
+- Added per-map Time of Day limits (Options → Time of Day by Map). Sabatulo allows only DayClear, DayLateClear, DayLateGray and DayLateRain; Builder hides other options and Bulk Generate skips them.
+- Maps with no zones now produce entries without `ZoneAlternator` instead of being blocked.
+- Saved browser configs get Sabatulo added automatically, once.
+
 ## 2026-10-16
 
 - Bakurani now uses `Bakurani_KOTH_02` (was `Bakurani_KOTH_01`).
