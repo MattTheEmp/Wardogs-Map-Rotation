@@ -430,6 +430,10 @@
                 <input type="checkbox" id="hardcore-check">
                 <span class="toggle-box">Hardcore</span>
               </label>
+              <label class="toggle">
+                <input type="checkbox" id="limitedgear-check">
+                <span class="toggle-box">Limited Gear</span>
+              </label>
             </div>
           </div>
 
@@ -518,6 +522,18 @@
       </section>
 
       <section class="card">
+        <div class="card-head"><h2>Time of Day by Map</h2></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="maplight-map-select">Allowed for</label>
+            <select id="maplight-map-select"></select>
+          </div>
+          <div class="option-note" style="margin:0 0 8px;">Unchecked options are hidden for this map in Builder and skipped in Bulk Generate.</div>
+          <div class="check-list" id="maplight-editor"></div>
+        </div>
+      </section>
+
+      <section class="card">
         <div class="card-head"><h2>Control Zones</h2></div>
         <div class="card-body">
           <div class="field">
@@ -541,11 +557,17 @@
       Bakurani: { value: "Kavkazi", experience: "Bakurani_KOTH_02" },
       Ozeti: { value: "Europe", experience: "Madrid_KOTH_01" },
       Zestafona: { value: "NorthAmerica", experience: "Detroit_KOTH_01" },
+      Sabatulo: { value: "Russia", experience: "Moscow_KOTH_01" },
     },
     zones: {
       Bakurani: ["Default", "Farmland", "Lumberyard"],
       Ozeti: ["Default", "Farmland", "Church", "River"],
       Zestafona: ["Default", "SmallFactory", "WaterTreatment", "Houses"],
+      Sabatulo: [],
+    },
+    // Maps listed here only allow these times of day; maps not listed allow all.
+    mapLighting: {
+      Sabatulo: ["DayClear", "DayLateClear", "DayLateGray", "DayLateRain"],
     },
     lighting: [
       "DayStartClear", "DayEarlyClear", "DayEarlyFog", "DayClear",
@@ -574,6 +596,18 @@
         if (m.experience === "Bakurani_KOTH_01") m.experience = "Bakurani_KOTH_02";
       });
       cfg.appliedFixes.push("bakurani-koth-02");
+    }
+    // Season 03: add Sabatulo to configs saved before it existed.
+    cfg.zones = cfg.zones || {};
+    cfg.mapLighting = cfg.mapLighting || {};
+    if (!cfg.appliedFixes.includes("add-sabatulo")){
+      const hasRussia = Object.values(cfg.maps).some(m => m.value === "Russia");
+      if (!hasRussia && cfg.maps.Sabatulo === undefined){
+        cfg.maps.Sabatulo = { ...DEFAULTS.maps.Sabatulo };
+        cfg.zones.Sabatulo = [...DEFAULTS.zones.Sabatulo];
+        cfg.mapLighting.Sabatulo = [...DEFAULTS.mapLighting.Sabatulo];
+      }
+      cfg.appliedFixes.push("add-sabatulo");
     }
     // One-time additions of new time-of-day options to configs saved before they existed.
     // Tracked in seenLighting so an option the user deliberately removes isn't re-added.
@@ -619,6 +653,7 @@
   const lightingSelect = document.getElementById("lighting-select");
   const infantryCheck = document.getElementById("infantry-check");
   const hardcoreCheck = document.getElementById("hardcore-check");
+  const limitedGearCheck = document.getElementById("limitedgear-check");
   const manifestList = document.getElementById("manifest-list");
   const emptyState = document.getElementById("empty-state");
   const entryCount = document.getElementById("entry-count");
@@ -652,12 +687,37 @@
   function refreshZones(){
     const map = mapSelect.value;
     zoneSelect.innerHTML = "";
-    (config.zones[map] || []).forEach(z => {
+    const zones = config.zones[map] || [];
+    zones.forEach(z => {
       const opt = document.createElement("option");
       opt.value = z; opt.textContent = z;
       zoneSelect.appendChild(opt);
     });
+    if (!zones.length){
+      const opt = document.createElement("option");
+      opt.value = ""; opt.textContent = "None (no zones for this map)";
+      zoneSelect.appendChild(opt);
+    }
+    zoneSelect.disabled = !zones.length;
     updateZoneHint();
+  }
+
+  function refreshLighting(){
+    const prevLighting = lightingSelect.value;
+    const options = lightingForMap(mapSelect.value);
+    lightingSelect.innerHTML = "";
+    options.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      lightingSelect.appendChild(opt);
+    });
+    if (options.includes(prevLighting)) lightingSelect.value = prevLighting;
+  }
+
+  function canAdd(){
+    if (!mapSelect.value || !lightingSelect.value) return false;
+    const hasZones = (config.zones[mapSelect.value] || []).length > 0;
+    return !hasZones || !!zoneSelect.value;
   }
 
   function zoneConfigValue(map, zoneName){
@@ -665,33 +725,44 @@
   }
 
   function updateZoneHint(){
+    if (mapSelect.value && !zoneSelect.value && !(config.zones[mapSelect.value] || []).length){
+      zoneHint.textContent = "No ZoneAlternator — entry uses the map's default.";
+      return;
+    }
     if (!mapSelect.value || !zoneSelect.value){ zoneHint.textContent = ""; return; }
     zoneHint.textContent = zoneConfigValue(mapSelect.value, zoneSelect.value);
   }
 
-  function buildLine({ map, infantry, hardcore, lighting, zone }){
-    const configMap = config.maps[map].value;
-    const experiences = [config.maps[map].experience];
-    if (infantry) experiences.push("KOTH_InfantryOnly");
-    if (hardcore) experiences.push("KOTH_Hardcore");
-    const experienceField = experiences.length > 1 ? "Experiences" : "Experience";
-    const experienceValue = experiences.join("+");
-    const zoneVal = zoneConfigValue(map, zone);
-    return `.RotationEntries=(Map="${configMap}",${experienceField}="${experienceValue}",Lighting="${lighting}",ZoneAlternator="${zoneVal}")`;
+  // Modifiers stack on the map's game mode, in this order, joined with "+".
+  const MODIFIERS = [
+    { key: "infantry", id: "KOTH_InfantryOnly", label: "Infantry Only", chip: "INF" },
+    { key: "hardcore", id: "KOTH_Hardcore", label: "Hardcore", chip: "HC" },
+    { key: "limitedGear", id: "KOTH_LimitedGear", label: "Limited Gear", chip: "LG" },
+  ];
+
+  function lightingForMap(map){
+    const allowed = config.mapLighting && config.mapLighting[map];
+    return allowed ? config.lighting.filter(l => allowed.includes(l)) : config.lighting.slice();
   }
 
-  const GAME_MODE_LABELS = {
-    none: "KOTH",
-    infantry: "KOTH Infantry Only",
-    hardcore: "KOTH Hardcore",
-    both: "KOTH Infantry Only + Hardcore",
-  };
+  function buildLine(entry){
+    const { map, lighting, zone } = entry;
+    const configMap = config.maps[map].value;
+    const experiences = [config.maps[map].experience];
+    MODIFIERS.forEach(m => { if (entry[m.key]) experiences.push(m.id); });
+    const experienceField = experiences.length > 1 ? "Experiences" : "Experience";
+    const experienceValue = experiences.join("+");
+    const zonePart = zone ? `,ZoneAlternator="${zoneConfigValue(map, zone)}"` : "";
+    return `.RotationEntries=(Map="${configMap}",${experienceField}="${experienceValue}",Lighting="${lighting}"${zonePart})`;
+  }
 
-  function gameModeKey(infantry, hardcore){
-    if (infantry && hardcore) return "both";
-    if (infantry) return "infantry";
-    if (hardcore) return "hardcore";
-    return "none";
+  function gameModeKey(entry){
+    return MODIFIERS.filter(m => entry[m.key]).map(m => m.key).join("+") || "none";
+  }
+
+  function gameModeLabel(key){
+    if (key === "none") return "KOTH";
+    return "KOTH " + key.split("+").map(k => MODIFIERS.find(m => m.key === k).label).join(" + ");
   }
 
   function buildOutput(list){
@@ -709,13 +780,13 @@
       const modeOrder = [];
       const byMode = {};
       mapEntries.forEach(e => {
-        const key = gameModeKey(e.infantry, e.hardcore);
+        const key = gameModeKey(e);
         if (!byMode[key]){ byMode[key] = []; modeOrder.push(key); }
         byMode[key].push(e);
       });
 
       const modeSections = modeOrder.map(key =>
-        `!! ${GAME_MODE_LABELS[key]}\n\n${byMode[key].map(buildLine).join("\n")}`
+        `!! ${gameModeLabel(key)}\n\n${byMode[key].map(buildLine).join("\n")}`
       );
 
       return `!! ${map}\n\n${modeSections.join("\n\n")}`;
@@ -734,17 +805,9 @@
     });
     if (Object.keys(config.maps).includes(prevMap)) mapSelect.value = prevMap;
 
-    const prevLighting = lightingSelect.value;
-    lightingSelect.innerHTML = "";
-    config.lighting.forEach(name => {
-      const opt = document.createElement("option");
-      opt.value = name; opt.textContent = name;
-      lightingSelect.appendChild(opt);
-    });
-    if (config.lighting.includes(prevLighting)) lightingSelect.value = prevLighting;
-
+    refreshLighting();
     refreshZones();
-    addBtn.disabled = !mapSelect.value || !lightingSelect.value || !zoneSelect.value;
+    addBtn.disabled = !canAdd();
   }
 
   let entries = [];
@@ -761,10 +824,10 @@
 
       const summary = document.createElement("div");
       summary.className = "entry-summary";
-      const chips = [e.infantry ? "INF" : null, e.hardcore ? "HC" : null].filter(Boolean);
+      const chips = MODIFIERS.filter(m => e[m.key]).map(m => m.chip);
       summary.innerHTML = `
         <div class="entry-title">${e.map}${chips.map(c => `<span class="chip">${c}</span>`).join("")}</div>
-        <div class="entry-meta">${e.lighting} · ${e.zone}</div>
+        <div class="entry-meta">${e.lighting} · ${e.zone || "No zone"}</div>
       `;
 
       const removeBtn = document.createElement("button");
@@ -786,17 +849,18 @@
     rawOutput.value = buildOutput(entries);
   }
 
-  mapSelect.addEventListener("change", () => { refreshZones(); addBtn.disabled = !mapSelect.value || !lightingSelect.value || !zoneSelect.value; });
+  mapSelect.addEventListener("change", () => { refreshLighting(); refreshZones(); addBtn.disabled = !canAdd(); });
   zoneSelect.addEventListener("change", updateZoneHint);
 
   addBtn.addEventListener("click", () => {
-    if (!mapSelect.value || !lightingSelect.value || !zoneSelect.value) return;
+    if (!canAdd()) return;
     entries.push({
       map: mapSelect.value,
       infantry: infantryCheck.checked,
       hardcore: hardcoreCheck.checked,
+      limitedGear: limitedGearCheck.checked,
       lighting: lightingSelect.value,
-      zone: zoneSelect.value,
+      zone: zoneSelect.value || null,
     });
     render();
   });
@@ -838,6 +902,7 @@
         Object.entries(config.maps).forEach(([k, v]) => { newMaps[k === name ? newName : k] = v; });
         config.maps = newMaps;
         if (config.zones[name]){ config.zones[newName] = config.zones[name]; delete config.zones[name]; }
+        if (config.mapLighting[name]){ config.mapLighting[newName] = config.mapLighting[name]; delete config.mapLighting[name]; }
         commitOptions();
       });
 
@@ -864,6 +929,7 @@
       removeBtn.addEventListener("click", () => {
         delete config.maps[name];
         delete config.zones[name];
+        delete config.mapLighting[name];
         commitOptions();
       });
 
@@ -891,7 +957,13 @@
       const input = document.createElement("input");
       input.value = value;
       input.addEventListener("change", () => {
-        config.lighting[i] = input.value.trim();
+        const oldName = config.lighting[i];
+        const newName = input.value.trim();
+        config.lighting[i] = newName;
+        Object.values(config.mapLighting).forEach(list => {
+          const j = list.indexOf(oldName);
+          if (j >= 0) list[j] = newName;
+        });
         commitOptions();
       });
 
@@ -900,7 +972,10 @@
       removeBtn.textContent = "×";
       removeBtn.setAttribute("aria-label", "Remove option");
       removeBtn.addEventListener("click", () => {
-        config.lighting.splice(i, 1);
+        const [removed] = config.lighting.splice(i, 1);
+        Object.keys(config.mapLighting).forEach(map => {
+          config.mapLighting[map] = config.mapLighting[map].filter(l => l !== removed);
+        });
         commitOptions();
       });
 
@@ -970,10 +1045,42 @@
     commitOptions();
   });
 
+  // ---- options: time of day by map ----
+  const mapLightMapSelect = document.getElementById("maplight-map-select");
+  const mapLightEditor = document.getElementById("maplight-editor");
+
+  function renderMapLightingEditor(){
+    const prev = mapLightMapSelect.value;
+    mapLightMapSelect.innerHTML = "";
+    Object.keys(config.maps).forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      mapLightMapSelect.appendChild(opt);
+    });
+    if (Object.keys(config.maps).includes(prev)) mapLightMapSelect.value = prev;
+
+    const map = mapLightMapSelect.value;
+    mapLightEditor.innerHTML = "";
+    if (!map) return;
+    const allowed = config.mapLighting[map];
+    config.lighting.forEach(name => {
+      const checked = !allowed || allowed.includes(name);
+      mapLightEditor.appendChild(checkItem(`maplight-${map}-${name}`, name, checked, isChecked => {
+        let list = config.mapLighting[map] ? config.mapLighting[map].slice() : config.lighting.slice();
+        list = isChecked ? [...new Set([...list, name])] : list.filter(l => l !== name);
+        if (config.lighting.every(l => list.includes(l))) delete config.mapLighting[map];
+        else config.mapLighting[map] = config.lighting.filter(l => list.includes(l));
+        commitOptions();
+      }));
+    });
+  }
+  mapLightMapSelect.addEventListener("change", renderMapLightingEditor);
+
   function commitOptions(){
     saveConfig();
     renderMapsEditor();
     renderLightingEditor();
+    renderMapLightingEditor();
     renderZoneMapSelect();
     renderZonesEditor();
     renderBuilderSelects();
@@ -981,17 +1088,23 @@
   }
 
   // ---- bulk generate ----
-  const MODIFIER_VARIANTS = [
-    { key: "none", label: "No Modifier", infantry: false, hardcore: false },
-    { key: "infantry", label: "Infantry Only", infantry: true, hardcore: false },
-    { key: "hardcore", label: "Hardcore", infantry: false, hardcore: true },
-    { key: "both", label: "Infantry + Hardcore", infantry: true, hardcore: true },
-  ];
+  // Every combination of modifiers (none, each alone, and stacked).
+  const MODIFIER_VARIANTS = [];
+  for (let mask = 0; mask < (1 << MODIFIERS.length); mask++){
+    const variant = {};
+    MODIFIERS.forEach((m, i) => { variant[m.key] = !!(mask & (1 << i)); });
+    variant.key = gameModeKey(variant);
+    const on = MODIFIERS.filter(m => variant[m.key]);
+    variant.label = on.length ? on.map(m => m.label).join(" + ") : "No Modifier";
+    MODIFIER_VARIANTS.push(variant);
+  }
+  MODIFIER_VARIANTS.sort((a, b) => a.key.split("+").length - b.key.split("+").length || (a.key === "none" ? -1 : 0));
 
   const bulkState = {
     maps: {},
     lighting: {},
-    modifiers: { none: true, infantry: true, hardcore: true, both: true },
+    // Limited Gear combos start unchecked so existing bulk runs don't silently double in size.
+    modifiers: Object.fromEntries(MODIFIER_VARIANTS.map(v => [v.key, !v.limitedGear])),
     zones: {},
   };
 
@@ -1067,6 +1180,13 @@
       title.textContent = map;
       const list = document.createElement("div");
       list.className = "check-list";
+      if (!zones.length){
+        const note = document.createElement("div");
+        note.className = "option-note";
+        note.style.margin = "0";
+        note.textContent = "No zones — entries are written without ZoneAlternator.";
+        list.appendChild(note);
+      }
       zones.forEach(zone => {
         if (bulkState.zones[map][zone] === undefined) bulkState.zones[map][zone] = true;
         list.appendChild(checkItem(`bulk-zone-${map}-${zone}`, zone, bulkState.zones[map][zone], checked => {
@@ -1086,11 +1206,17 @@
     const selectedModifiers = MODIFIER_VARIANTS.filter(v => bulkState.modifiers[v.key]);
     const combos = [];
     selectedMaps.forEach(map => {
-      const selectedZones = (config.zones[map] || []).filter(z => bulkState.zones[map] && bulkState.zones[map][z]);
+      const mapZones = config.zones[map] || [];
+      const selectedZones = mapZones.length
+        ? mapZones.filter(z => bulkState.zones[map] && bulkState.zones[map][z])
+        : [null];
+      const mapLighting = lightingForMap(map).filter(l => selectedLighting.includes(l));
       selectedZones.forEach(zone => {
-        selectedLighting.forEach(lighting => {
+        mapLighting.forEach(lighting => {
           selectedModifiers.forEach(variant => {
-            combos.push({ map, zone, lighting, infantry: variant.infantry, hardcore: variant.hardcore });
+            const combo = { map, zone, lighting };
+            MODIFIERS.forEach(m => { combo[m.key] = variant[m.key]; });
+            combos.push(combo);
           });
         });
       });
@@ -1120,6 +1246,7 @@
 
   renderMapsEditor();
   renderLightingEditor();
+  renderMapLightingEditor();
   renderZoneMapSelect();
   renderZonesEditor();
   renderBuilderSelects();
