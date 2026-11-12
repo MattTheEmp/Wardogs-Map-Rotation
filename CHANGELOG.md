@@ -2,6 +2,13 @@
 
 All notable changes to the Wardog Rotation Builder.
 
+## 2026-11-12 (2)
+
+- Added Sabatulo control zones: Hospital, Bazaar, River, Hillside. Their paths use the spelling `Sabartulo` (e.g. `ZoneAlternator.Sabartulo.Hospital.Circle`).
+- Each map now has an optional **zone name** field in Options (blank = app name) for maps whose zone paths don't match the app name.
+- Maps card in Options is now full width so all four fields are readable.
+- Saved browser configs get the Sabatulo zones added automatically, once.
+
 ## 2026-11-12 (Season 03)
 
 - Added map **Sabatulo** (config `Russia`, experience `Moscow_KOTH_01`). It has no control zones yet, so its entries are written without `ZoneAlternator`; zones can be added in Options when known.
