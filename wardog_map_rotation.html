@@ -504,10 +504,10 @@
 
   <section id="panel-options" hidden>
     <div class="options-grid">
-      <section class="card">
+      <section class="card" style="grid-column: 1 / -1;">
         <div class="card-head"><h2>Maps</h2></div>
         <div class="card-body">
-          <div class="option-note">App name → config value → base experience</div>
+          <div class="option-note">App name → config value → base experience → zone name (blank = app name)</div>
           <div class="option-rows" id="maps-editor"></div>
           <button class="btn-secondary full-width" id="add-map-btn" type="button">+ Add Map</button>
         </div>
@@ -557,13 +557,13 @@
       Bakurani: { value: "Kavkazi", experience: "Bakurani_KOTH_02" },
       Ozeti: { value: "Europe", experience: "Madrid_KOTH_01" },
       Zestafona: { value: "NorthAmerica", experience: "Detroit_KOTH_01" },
-      Sabatulo: { value: "Russia", experience: "Moscow_KOTH_01" },
+      Sabatulo: { value: "Russia", experience: "Moscow_KOTH_01", zoneName: "Sabartulo" },
     },
     zones: {
       Bakurani: ["Default", "Farmland", "Lumberyard"],
       Ozeti: ["Default", "Farmland", "Church", "River"],
       Zestafona: ["Default", "SmallFactory", "WaterTreatment", "Houses"],
-      Sabatulo: [],
+      Sabatulo: ["Hospital", "Bazaar", "River", "Hillside"],
     },
     // Maps listed here only allow these times of day; maps not listed allow all.
     mapLighting: {
@@ -608,6 +608,15 @@
         cfg.mapLighting.Sabatulo = [...DEFAULTS.mapLighting.Sabatulo];
       }
       cfg.appliedFixes.push("add-sabatulo");
+    }
+    // Sabatulo zones (its ZoneAlternator paths use the spelling "Sabartulo").
+    if (!cfg.appliedFixes.includes("sabatulo-zones")){
+      const sab = cfg.maps.Sabatulo;
+      if (sab && sab.value === "Russia"){
+        if (!sab.zoneName) sab.zoneName = DEFAULTS.maps.Sabatulo.zoneName;
+        if (!cfg.zones.Sabatulo || !cfg.zones.Sabatulo.length) cfg.zones.Sabatulo = [...DEFAULTS.zones.Sabatulo];
+      }
+      cfg.appliedFixes.push("sabatulo-zones");
     }
     // One-time additions of new time-of-day options to configs saved before they existed.
     // Tracked in seenLighting so an option the user deliberately removes isn't re-added.
@@ -721,7 +730,8 @@
   }
 
   function zoneConfigValue(map, zoneName){
-    return `ZoneAlternator.${map}.${zoneName}.Circle`;
+    const mapZoneName = (config.maps[map] && config.maps[map].zoneName) || map;
+    return `ZoneAlternator.${mapZoneName}.${zoneName}.Circle`;
   }
 
   function updateZoneHint(){
@@ -933,7 +943,18 @@
         commitOptions();
       });
 
-      row.append(nameInput, valueInput, prefixInput, removeBtn);
+      const zoneNameInput = document.createElement("input");
+      zoneNameInput.value = entry.zoneName || "";
+      zoneNameInput.placeholder = name;
+      zoneNameInput.title = "Name used in ZoneAlternator paths (blank = app name)";
+      zoneNameInput.addEventListener("change", () => {
+        const v = zoneNameInput.value.trim();
+        if (v && v !== name) config.maps[name].zoneName = v;
+        else delete config.maps[name].zoneName;
+        commitOptions();
+      });
+
+      row.append(nameInput, valueInput, prefixInput, zoneNameInput, removeBtn);
       mapsEditor.appendChild(row);
     });
   }

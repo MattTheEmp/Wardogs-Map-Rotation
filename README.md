@@ -8,7 +8,7 @@ Open [`wardog_map_rotation.html`](wardog_map_rotation.html) in any browser (doub
 
 ### Builder tab
 
-1. Pick a **Map**, toggle **Infantry Only** / **Hardcore** / **Limited Gear**, set **Time of Day** and **Control Zone**. Time of Day only lists the options allowed for that map (e.g. Sabatulo allows 4). Maps with no zones (Sabatulo for now) are written without `ZoneAlternator`.
+1. Pick a **Map**, toggle **Infantry Only** / **Hardcore** / **Limited Gear**, set **Time of Day** and **Control Zone**. Time of Day only lists the options allowed for that map (e.g. Sabatulo allows 4). Maps with no zones are written without `ZoneAlternator`.
 2. Click **Add to Rotation** — the entry appears in the manifest on the right.
 3. Click **Copy Config Block** to copy the generated lines.
 
@@ -18,7 +18,7 @@ Check off multiple maps, times of day, zones (per map), and modifier combination
 
 ### Options tab
 
-Edit the Map / Time of Day / Time of Day by Map / Control Zone lists directly — add, rename, or remove entries. Each map has three fields: app name, config value, and base experience (the value used in `Experience`/`Experiences`, which isn't always based on the map name — e.g. `Europe` uses `Madrid_KOTH_01` and `Kavkazi` uses `Bakurani_KOTH_02`). Changes are saved to that browser's local storage.
+Edit the Map / Time of Day / Time of Day by Map / Control Zone lists directly — add, rename, or remove entries. Each map has four fields: app name, config value, zone name (used in `ZoneAlternator` paths when it differs from the app name — e.g. Sabatulo's zones are `ZoneAlternator.Sabartulo.<Zone>.Circle`; blank means the app name), and base experience (the value used in `Experience`/`Experiences`, which isn't always based on the map name — e.g. `Europe` uses `Madrid_KOTH_01` and `Kavkazi` uses `Bakurani_KOTH_02`). Changes are saved to that browser's local storage.
 
 ## Output format
 
@@ -45,10 +45,10 @@ Entries are grouped by map, then by game mode, with a blank line between map gro
 
 The `Experience` field is singular with no modifiers, and `Experiences` (modifiers joined with `+`, game mode first) when one or more are added. Modifiers are `KOTH_InfantryOnly`, `KOTH_Hardcore` and `KOTH_LimitedGear`, in that order.
 
-Sabatulo example (no zone):
+Sabatulo example:
 
 ```
-.RotationEntries=(Map="Russia",Experiences="Moscow_KOTH_01+KOTH_LimitedGear",Lighting="DayLateRain")
+.RotationEntries=(Map="Russia",Experiences="Moscow_KOTH_01+KOTH_LimitedGear",Lighting="DayLateRain",ZoneAlternator="ZoneAlternator.Sabartulo.Hospital.Circle")
 ```
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
